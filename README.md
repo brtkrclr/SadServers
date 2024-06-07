@@ -95,3 +95,36 @@ user@user:~$ echo "411156">solution
 ```
 So basically by using grep and wc command we can grep Alice in all txt files (*.txt) and wc (word count) command we can see the total number of Alice.
 "There's a file where Alice appears exactly once" for this one I basically did "cat file_name.txt|grep Alice" and try to catch the file. After I found it I got it.
+---
+## "Lhasa": Easy Math
+
+
+Description: There's a file /home/admin/scores.txt with two columns (imagine the first number is a counter and the second one is a test score for example).
+Find the average (more precisely; the arithmetic mean: sum of numbers divided by how many numbers are there) of the numbers in the second column (find the average score).
+
+Use exactly two digits to the right of the decimal point. i. e., use exaclty two "decimal digits" without any rounding. Eg: if average = 21.349 , the solution is 21.34. If average = 33.1 , the solution is 33.10.
+
+Save the solution in the /home/admin/solution file, for example: echo "123.45" > ~/solution
+
+Tip: There's bc, Python3, Golang and sqlite3 installed in this VM.
+Test: md5sum /home/admin/solution returns 6d4832eb963012f6d8a71a60fac77168 solution
+Time to Solve: 15 minutes.
+```
+user@user:~$ ls
+README.txt  agent  scores.txt  solution
+user@user:~$ tail scores.txt 
+91 3.5
+92 4.4
+93 3.5
+94 4.2
+95 8.0
+96 5.5
+97 7.2
+98 4.8
+99 4.7
+100 9.0
+user@user:~$ awk '{ total += $2; count++ } END { printf "%.2f", total/count }' scores.txt
+5.20
+user@user:~$ echo "5.20" > solution
+```
+printf "%.2f" basically use two decimal digits. 
