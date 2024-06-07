@@ -35,3 +35,63 @@ user@user:~$ sha1sum /home/admin/highestip.txt
 
 ```
 ---
+## "Santiago": Find the secret combination
+
+Description: Alice the spy has hidden a secret number combination, find it using these instructions:
+
+1) Find the number of lines with occurrences of the string Alice (case sensitive) in the *.txt files in the /home/admin directory
+2) There's a file where Alice appears exactly once. In that file, in the line after that "Alice" occurrence there's a number.
+Write both numbers consecutively as one (no new line or spaces) to the solution file. For example if the first number from 1) is 11 and the second 22, you can do echo -n 11 > /home/admin/solution; echo 22 >> /home/admin/solution or echo "1122" > /home/admin/solution.
+
+Test: Running md5sum /home/admin/solution returns d80e026d18a57b56bddf1d99a8a491f9(just a way to verify the solution without giving it away.)
+
+Time to Solve: 15 minutes.
+
+```
+user@user:/$ cd /home/admin/
+user@user:~$ ls
+11-0.txt  1342-0.txt  1661-0.txt  84-0.txt  agent  solution
+user@user:~$ cat *.txt|grep Alice|wc
+    411    4781   28316
+user@user:~$ cat 1342-0.txt|grep -n Alice
+33:                                Alice
+user@user:~$ cat 1342-0.txt|head -35
+The Project Gutenberg eBook of Pride and prejudice, by Jane Austen
+
+This eBook is for the use of anyone anywhere in the United States and
+most other parts of the world at no cost and with almost no restrictions
+whatsoever. You may copy it, give it away or re-use it under the terms
+of the Project Gutenberg License included with this eBook or online at
+www.gutenberg.org. If you are not located in the United States, you
+will have to check the laws of the country where you are located before
+using this eBook.
+
+Title: Pride and prejudice
+
+Author: Jane Austen
+
+Release Date: November 12, 2022 [eBook #1342]
+
+Language: English
+
+Produced by: Chuck Greif and the Online Distributed Proofreading Team at
+             http://www.pgdp.net (This file was produced from images
+             available at The Internet Archive)
+
+*** START OF THE PROJECT GUTENBERG EBOOK PRIDE AND PREJUDICE ***
+
+
+
+
+
+                            [Illustration:
+
+                             GEORGE ALLEN
+                              PUBLISHER
+                                Alice
+                        156 CHARING CROSS ROAD
+                                LONDON
+user@user:~$ echo "411156">solution
+```
+So basically by using grep and wc command we can grep Alice in all txt files (*.txt) and wc (word count) command we can see the total number of Alice.
+"There's a file where Alice appears exactly once" for this one I basically did "cat file_name.txt|grep Alice" and try to catch the file. After I found it I got it.
