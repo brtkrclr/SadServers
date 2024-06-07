@@ -95,6 +95,7 @@ user@user:~$ echo "411156">solution
 ```
 So basically by using grep and wc command we can grep Alice in all txt files (*.txt) and wc (word count) command we can see the total number of Alice.
 "There's a file where Alice appears exactly once" for this one I basically did "cat file_name.txt|grep Alice" and try to catch the file. After I found it I got it.
+
 ---
 ## "Lhasa": Easy Math
 
