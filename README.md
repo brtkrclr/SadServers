@@ -129,3 +129,158 @@ user@user:~$ awk '{ total += $2; count++ } END { printf "%.2f", total/count }' s
 user@user:~$ echo "5.20" > solution
 ```
 printf "%.2f" basically use two decimal digits. 
+
+---
+## "Bilbao": Basic Kubernetes Problems
+
+Description: There's a Kubernetes Deployment with an Nginx pod and a Load Balancer declared in the manifest.yml file. The pod is not coming up. Fix it so that you can access the Nginx container through the Load Balancer.
+There's no "sudo" (root) access.
+Test: Running curl 10.43.216.196 returns the default Nginx Welcome page.
+See /home/admin/agent/check.sh for the test that "Check My Solution" runs.
+
+Let's check the pods and describe the pod to see the events
+```
+admin@i-0d42ad3f499d7c114:~$ kubectl  get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-67699598cc-zrj6f   0/1     Pending   0          146d
+admin@i-0d42ad3f499d7c114:~$ kubectl  describe pod nginx-deployment-67699598cc-zrj6f
+Name:             nginx-deployment-67699598cc-zrj6f
+Namespace:        default
+Priority:         0
+Service Account:  default
+Node:             <none>
+Labels:           app=nginx
+                  pod-template-hash=67699598cc
+Annotations:      <none>
+Status:           Pending
+IP:               
+IPs:              <none>
+Controlled By:    ReplicaSet/nginx-deployment-67699598cc
+Containers:
+  nginx:
+    Image:      localhost:5000/nginx
+    Port:       80/TCP
+    Host Port:  0/TCP
+    Limits:
+      cpu:     100m
+      memory:  2000Mi
+    Requests:
+      cpu:        100m
+      memory:     2000Mi
+    Environment:  <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-mslhc (ro)
+Conditions:
+  Type           Status
+  PodScheduled   False 
+Volumes:
+  kube-api-access-mslhc:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   Guaranteed
+Node-Selectors:              disk=ssd
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason            Age   From               Message
+  ----     ------            ----  ----               -------
+  Warning  FailedScheduling  146d  default-scheduler  0/2 nodes are available: 1 node(s) didn't match Pod's node affinity/selector, 1 node(s) had untolerated taint {node.kubernetes.io/unreachable: }. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling..
+  Warning  FailedScheduling  42s   default-scheduler  0/2 nodes are available: 1 node(s) didn't match Pod's node affinity/selector, 1 node(s) had untolerated taint {node.kubernetes.io/unreachable: }. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling..
+````
+Hmm, here is the keyword **didn't match Pod's node affinity/selector**. Let's see the deployment yaml and let's see nodes' labels.
+
+```
+admin@i-0eab1b477684c95df:~$ cat manifest.yml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: localhost:5000/nginx
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: 2000Mi
+            cpu: 100m
+          requests:
+            cpu: 100m
+            memory: 2000Mi
+      nodeSelector:
+        disk: ssd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  clusterIP: 10.43.216.196
+  type: LoadBalancer
+  ```
+
+For the deployment ***nodeSelector.disk: ssd*** , let's check the labels for nodes. 
+```
+admin@i-0eab1b477684c95df:~$ kubectl get nodes --show-labels
+NAME                  STATUS     ROLES                  AGE    VERSION        LABELS
+node1                 Ready      control-plane,master   146d   v1.28.5+k3s1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/instance-type=k3s,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=node1,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=true,node-role.kubernetes.io/master=true,node.kubernetes.io/instance-type=k3s
+i-02f8e6680f7d5e616   NotReady   control-plane,master   146d   v1.28.5+k3s1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/instance-type=k3s,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=i-02f8e6680f7d5e616,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=true,node-role.kubernetes.io/master=true,node.kubernetes.io/instance-type=k3s
+```
+As you can see we do not have disk:ssd labeled node.
+
+We have two solutions: Either we label any node with the given value, or we will remove nodeSelector from deployment yaml and re-apply. I picked the second one.
+
+````
+admin@i-0eab1b477684c95df:~$ kubectl apply -f manifest.yml 
+deployment.apps/nginx-deployment configured
+service/nginx-service unchanged
+
+admin@i-0d42ad3f499d7c114:~$ kubectl  get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-67699598cc-zrj6f   0/1     Pending   0          150d
+````
+It's still in Pending situtation. Let's check again.
+````
+admin@i-0eab1b477684c95df:~$ kubectl describe pod nginx-deployment-5744b8dff-vk5nd | tail
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   Guaranteed
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason            Age   From               Message
+  ----     ------            ----  ----               -------
+  Warning  FailedScheduling  44s   default-scheduler  0/2 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint {node.kubernetes.io/unreachable: }. preemption: 0/2 nodes are available: 1 No preemption victims found for incoming pod, 1 Preemption is not helpful for scheduling..
+````
+**1 Insufficient memory, 1 node(s) had untolerated taint** that's the problem. We can reduce memory requesti to 1000Mi and re-apply
+
+And here we go. Now we can test curl.
+```
+admin@i-0d42ad3f499d7c114:~$ kubectl  get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-67699598cc-zrj6f   1/1     Running   0          146d
+````
+
